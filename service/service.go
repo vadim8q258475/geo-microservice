@@ -15,20 +15,21 @@ import (
 	"go.uber.org/zap"
 )
 
+type Api interface {
+	Address(ctx context.Context, params *suggest.RequestParams) (ret []*suggest.AddressSuggestion, err error)
+}
+
 type GrpcService struct {
 	pb.UnimplementedGeoServiceServer
-	api       *suggest.Api
+	api       Api
 	apiKey    string
 	secretKey string
 	logger    *zap.Logger
 }
 
 func NewGeoGrpcService(apiKey, secretKey string, logger *zap.Logger) *GrpcService {
-	var err error
-	endpointUrl, err := url.Parse("https://suggestions.dadata.ru/suggestions/api/4_1/rs/")
-	if err != nil {
-		return nil
-	}
+	// var err error
+	endpointUrl, _ := url.Parse("https://suggestions.dadata.ru/suggestions/api/4_1/rs/")
 
 	creds := client.Credentials{
 		ApiKeyValue:    apiKey,
@@ -51,7 +52,7 @@ func (s *GrpcService) AddressSearch(ctx context.Context, in *pb.AddressSearchReq
 	res := &pb.AddressSearchResponse{Addresses: make([]*pb.Address, 0)}
 	rawRes, err := s.api.Address(context.Background(), &suggest.RequestParams{Query: in.Query})
 	if err != nil {
-		s.logger.Error(fmt.Sprintf("api request error: %w", err))
+		s.logger.Error(fmt.Sprintf("api request error: %s", err.Error()))
 		return nil, err
 	}
 
@@ -70,7 +71,7 @@ func (s *GrpcService) GeoCode(ctx context.Context, in *pb.GeoCodeRequest) (*pb.A
 	var data = strings.NewReader(fmt.Sprintf(`{"lat": %s, "lon": %s}`, in.Lat, in.Lng))
 	req, err := http.NewRequest("POST", "https://suggestions.dadata.ru/suggestions/api/4_1/rs/geolocate/address", data)
 	if err != nil {
-		s.logger.Error(fmt.Sprintf("create request error: %w", err))
+		s.logger.Error(fmt.Sprintf("create request error: %s", err.Error()))
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -78,14 +79,14 @@ func (s *GrpcService) GeoCode(ctx context.Context, in *pb.GeoCodeRequest) (*pb.A
 	req.Header.Set("Authorization", fmt.Sprintf("Token %s", s.apiKey))
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		s.logger.Error(fmt.Sprintf("api request error: %w", err))
+		s.logger.Error(fmt.Sprintf("api request error: %s", err.Error()))
 		return nil, err
 	}
 	var geoCode GeoCode
 
 	err = json.NewDecoder(resp.Body).Decode(&geoCode)
 	if err != nil {
-		s.logger.Error(fmt.Sprintf("decode error: %w", err))
+		s.logger.Error(fmt.Sprintf("decode error: %s", err.Error()))
 		return nil, err
 	}
 	result := &pb.AddressSearchResponse{Addresses: make([]*pb.Address, 0)}
