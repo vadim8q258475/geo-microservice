@@ -1,0 +1,46 @@
+version: "3.0"
+
+
+services:
+  geo1:
+    build: .
+    container_name: geo-microservice-container1
+    networks:
+      - geo-net
+    env_file:
+      - .env
+  
+  geo2:
+    build: .
+    container_name: geo-microservice-container2
+    networks:
+      - geo-net
+    env_file:
+      - .env
+
+  geo3:
+    build: .
+    container_name: geo-microservice-container3
+    networks:
+      - geo-net
+    env_file:
+      - .env
+  
+  geo-nginx:
+    image: nginx
+    ports:
+      - "1236:1236"
+    volumes:
+      - ./geo-nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - geo-net
+    depends_on:
+      - geo1
+      - geo2
+      - geo3
+
+
+networks:
+  geo-net:
+    external: true 
+    name: geo-net
